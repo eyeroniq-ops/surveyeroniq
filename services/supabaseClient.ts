@@ -118,7 +118,6 @@ export const createSurvey = async (surveyData: SurveyData) => {
 export const deleteSurvey = async (id: string) => {
   try {
     // 1. Delete all submissions associated with this survey first
-    // This handles foreign key constraints if CASCADE DELETE is not configured in DB
     const { error: subError } = await supabase
       .from('submissions')
       .delete()
@@ -126,19 +125,23 @@ export const deleteSurvey = async (id: string) => {
 
     if (subError) {
       console.warn("Could not delete associated submissions:", subError);
-      // Proceeding to delete survey might fail if there are still submissions, 
-      // but we try anyway in case RLS prevented submission read/delete but cascade is on, etc.
-      // Ideally we throw here if we know it will fail.
-      throw new Error(`No se pudieron borrar las respuestas: ${subError.message}`);
+      throw new Error(`Error al borrar respuestas vinculadas: ${subError.message}`);
     }
 
-    // 2. Delete the survey
-    const { error } = await supabase
+    // 2. Delete the survey and request count of deleted rows
+    // 'count: exact' allows us to check if something was actually deleted
+    const { error, count } = await supabase
       .from('surveys')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', id);
 
     if (error) throw error;
+
+    // 3. Verify deletion happened
+    if (count === 0) {
+      throw new Error("No se eliminó ningún registro. Verifique los permisos (Policies) de DELETE en Supabase.");
+    }
+
   } catch (error) {
     console.error("Error deleting survey:", error);
     throw error;

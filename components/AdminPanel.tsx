@@ -47,14 +47,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
           setProcessingId(id);
           try {
               await deleteSurvey(id);
+              // Success! Reload list.
               await loadSurveys();
           } catch (error: any) {
               console.error("Error deleting survey:", error);
-              if (error.message && error.message.includes('violates row-level security')) {
-                  alert("Error de permisos: No puedes eliminar registros. Verifica las políticas RLS en Supabase.");
+              
+              // Improved Error Messaging for the User
+              let msg = error.message || "Error desconocido";
+              if (msg.includes('violates row-level security') || msg.includes('permisos')) {
+                  alert("⚠️ ERROR DE PERMISOS\n\nNo se pudo eliminar la encuesta porque la base de datos lo bloqueó.\n\nSOLUCIÓN: Ve a Supabase > SQL Editor y ejecuta:\n\nCREATE POLICY \"Allow delete\" ON surveys FOR DELETE USING (true);");
               } else {
-                  alert(`Error al eliminar: ${error.message || "Revisa la consola para más detalles."}`);
+                  alert(`❌ Error al eliminar: ${msg}`);
               }
+              
+              // Reload anyway to ensure UI is consistent
+              loadSurveys();
           } finally {
             setProcessingId(null);
           }
