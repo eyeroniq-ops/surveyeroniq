@@ -1,13 +1,13 @@
 import React from 'react';
-import { Layers, Lock } from 'lucide-react';
+import { Layers, Lock, Unlock } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
   onAdminClick: () => void;
-  showAdminLink?: boolean;
+  isAdmin?: boolean;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, onAdminClick, showAdminLink = true }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, onAdminClick, isAdmin = false }) => {
   return (
     <div className="min-h-screen flex flex-col bg-black text-neutral-200 relative overflow-x-hidden">
       {/* Background ambient effects - Reduced saturation for black theme */}
@@ -32,15 +32,13 @@ export const Layout: React.FC<LayoutProps> = ({ children, onAdminClick, showAdmi
               <div className="text-[10px] font-bold px-2 py-1 rounded border border-neutral-800 bg-neutral-900 text-neutral-500">
                   BETA
               </div>
-              {showAdminLink && (
-                <button 
-                  onClick={onAdminClick}
-                  className="p-2 text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-full transition-all"
-                  title="Admin Access"
-                >
-                  <Lock className="w-4 h-4" />
-                </button>
-              )}
+              <button 
+                onClick={onAdminClick}
+                className="p-2 text-neutral-600 hover:text-white hover:bg-neutral-800 rounded-full transition-all"
+                title={isAdmin ? "Exit Admin Mode" : "Admin Access"}
+              >
+                {isAdmin ? <Unlock className="w-4 h-4 text-indigo-400" /> : <Lock className="w-4 h-4" />}
+              </button>
           </div>
         </div>
       </header>

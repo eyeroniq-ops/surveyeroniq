@@ -37,6 +37,7 @@ const App: React.FC = () => {
     setMode(newMode);
     if (newMode === AppMode.PUBLIC_SURVEY) {
         setSubmitted(false);
+        if (!data) loadActiveSurvey();
     }
     window.scrollTo(0, 0);
   };
@@ -47,8 +48,10 @@ const App: React.FC = () => {
 
   const toggleAdmin = () => {
       if (mode === AppMode.ADMIN_DASHBOARD || mode === AppMode.ADMIN_EDITOR || mode === AppMode.ADMIN_RESULTS) {
-          setMode(AppMode.PUBLIC_SURVEY);
-          loadActiveSurvey(); // reload public state
+          if (window.confirm("¿Salir del modo administrador?")) {
+            setMode(AppMode.PUBLIC_SURVEY);
+            loadActiveSurvey(); // reload public state
+          }
       } else {
           // Password check
           const password = prompt("Introduce la contraseña de administrador:");
@@ -61,7 +64,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout onAdminClick={toggleAdmin} showAdminLink={mode === AppMode.PUBLIC_SURVEY}>
+    <Layout onAdminClick={toggleAdmin} isAdmin={mode !== AppMode.PUBLIC_SURVEY}>
       
       {/* Loading State */}
       {loading && (
