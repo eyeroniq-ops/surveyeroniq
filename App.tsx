@@ -24,6 +24,12 @@ const App: React.FC = () => {
         const active = await getActiveSurvey();
         if (active) {
             setSurveyData(active);
+            // Check if already submitted this specific survey
+            if (active.id && localStorage.getItem(`submitted_survey_${active.id}`) === 'true') {
+                setSubmitted(true);
+            } else {
+                setSubmitted(false);
+            }
         }
     } catch (e) {
         console.error("Could not load survey", e);
@@ -35,14 +41,25 @@ const App: React.FC = () => {
   const handleNavigate = (newMode: AppMode, data?: SurveyData) => {
     if (data) setSurveyData(data);
     setMode(newMode);
+    
     if (newMode === AppMode.PUBLIC_SURVEY) {
         setSubmitted(false);
-        if (!data) loadActiveSurvey();
+        if (!data) {
+            loadActiveSurvey();
+        } else {
+            // If previewing/navigating to a specific survey, check protection too
+            if (data.id && localStorage.getItem(`submitted_survey_${data.id}`) === 'true') {
+                setSubmitted(true);
+            }
+        }
     }
     window.scrollTo(0, 0);
   };
 
   const handleSurveyComplete = () => {
+    if (surveyData?.id) {
+        localStorage.setItem(`submitted_survey_${surveyData.id}`, 'true');
+    }
     setSubmitted(true);
   };
 
@@ -95,16 +112,18 @@ const App: React.FC = () => {
                         
                         <div className="flex flex-col sm:flex-row gap-4 relative z-10">
                           <a 
-                            href="#" 
-                            onClick={(e) => { e.preventDefault(); alert("Redirigiendo a eyeroniq para descuento..."); }}
+                            href="https://wa.me/522212043481?text=Hola,%20acabo%20de%20contestar%20la%20encuesta%20y%20me%20gustar%C3%ADa%20reclamar%20mi%2010%25%20de%20descuento%20en%20mi%20pr%C3%B3ximo%20servicio." 
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex-1 py-4 px-6 bg-white hover:bg-neutral-200 text-black font-bold text-lg rounded-xl transition-all flex items-center justify-center gap-3 group-hover:shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)]"
                           >
-                            Obtener 10% de Descuento <ArrowRight className="w-5 h-5" />
+                            10% de descuento en tu próximo servicio <ArrowRight className="w-5 h-5" />
                           </a>
                           
                           <a 
-                            href="#" 
-                            onClick={(e) => { e.preventDefault(); alert("Redirigiendo a sitio web..."); }}
+                            href="https://eyeroniq.com" 
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex-1 py-4 px-6 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold text-lg rounded-xl transition-all flex items-center justify-center gap-3 border border-neutral-700"
                           >
                             Conoce más de eyeroniq <ExternalLink className="w-4 h-4" />
