@@ -43,16 +43,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
 
   const handleDeleteSurvey = async (id: string, title: string) => {
       if (!id) return;
-      if (window.confirm(`¿Estás seguro de que deseas eliminar la encuesta "${title}"? Esta acción no se puede deshacer.`)) {
+      if (window.confirm(`¿Estás seguro de que deseas eliminar la encuesta "${title}"? Esta acción no se puede deshacer y borrará todas las respuestas asociadas.`)) {
           setProcessingId(id);
           try {
               await deleteSurvey(id);
               await loadSurveys();
           } catch (error: any) {
+              console.error("Error deleting survey:", error);
               if (error.message && error.message.includes('violates row-level security')) {
                   alert("Error de permisos: No puedes eliminar registros. Verifica las políticas RLS en Supabase.");
               } else {
-                  alert("Error al eliminar. Revisa la consola para más detalles.");
+                  alert(`Error al eliminar: ${error.message || "Revisa la consola para más detalles."}`);
               }
           } finally {
             setProcessingId(null);
