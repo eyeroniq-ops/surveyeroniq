@@ -50,8 +50,13 @@ const App: React.FC = () => {
           setMode(AppMode.PUBLIC_SURVEY);
           loadActiveSurvey(); // reload public state
       } else {
-          // In a real app, check auth here
-          setMode(AppMode.ADMIN_DASHBOARD);
+          // Password check
+          const password = prompt("Introduce la contraseña de administrador:");
+          if (password === "eyeroniq2025") {
+            setMode(AppMode.ADMIN_DASHBOARD);
+          } else if (password !== null) {
+            alert("Contraseña incorrecta");
+          }
       }
   };
 

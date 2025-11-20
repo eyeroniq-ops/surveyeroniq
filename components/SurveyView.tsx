@@ -97,17 +97,19 @@ export const SurveyView: React.FC<SurveyViewProps> = ({ data, onComplete }) => {
 
                   {/* Image Area */}
                   <div className={`
-                    p-8 flex-1 flex items-center justify-center min-h-[340px] relative bg-neutral-50/50
-                    transition-colors duration-300
+                    flex-1 flex items-center justify-center relative bg-neutral-50/50
+                    transition-colors duration-300 overflow-hidden
                   `}>
                     {currentQ.type === 'IMAGE' ? (
-                      <div className="w-full h-full flex items-center justify-center relative group-hover:scale-105 transition-transform duration-500">
+                      <div className={`w-full flex items-center justify-center relative group-hover:scale-105 transition-transform duration-500 ${isLast ? 'aspect-[9/16]' : 'aspect-square'}`}>
                         {asset ? (
                           <>
                             <img 
                               src={asset} 
                               alt={`Opción ${brand.name}`} 
-                              className="w-full h-auto max-h-[320px] object-contain drop-shadow-xl" 
+                              className={`w-full h-full drop-shadow-xl transition-transform duration-500
+                                ${isLast ? 'object-cover' : 'object-cover scale-110'}
+                              `}
                             />
                           </>
                         ) : (
@@ -119,7 +121,7 @@ export const SurveyView: React.FC<SurveyViewProps> = ({ data, onComplete }) => {
                       </div>
                     ) : (
                       // PALETTE VIEW
-                      <div className="w-full flex flex-col gap-6 items-center justify-center py-8">
+                      <div className="w-full aspect-square flex flex-col gap-6 items-center justify-center py-8">
                         <div className="flex flex-wrap justify-center gap-4">
                           {(asset || '').split(',').filter(Boolean).map((color, idx) => (
                             <div 
