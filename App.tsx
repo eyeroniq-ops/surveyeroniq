@@ -43,14 +43,14 @@ const App: React.FC = () => {
     setMode(newMode);
     
     if (newMode === AppMode.PUBLIC_SURVEY) {
-        setSubmitted(false);
-        if (!data) {
-            loadActiveSurvey();
+        // When entering public mode, verify submission status for the current survey
+        const targetData = data || surveyData;
+        if (targetData?.id) {
+             const hasSubmitted = localStorage.getItem(`submitted_survey_${targetData.id}`) === 'true';
+             setSubmitted(hasSubmitted);
         } else {
-            // If previewing/navigating to a specific survey, check protection too
-            if (data.id && localStorage.getItem(`submitted_survey_${data.id}`) === 'true') {
-                setSubmitted(true);
-            }
+             setSubmitted(false);
+             if (!data) loadActiveSurvey();
         }
     }
     window.scrollTo(0, 0);
