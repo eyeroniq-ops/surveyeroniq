@@ -11,6 +11,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
   const [view, setView] = useState<'LIST' | 'EDIT'>('LIST');
   const [surveysList, setSurveysList] = useState<SurveyData[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   
   // Editor State
   const [title, setTitle] = useState('Nueva Encuesta Visual');
@@ -41,30 +42,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
   };
 
   const handleDeleteSurvey = async (id: string, title: string) => {
+      if (!id) return;
       if (window.confirm(`¿Estás seguro de que deseas eliminar la encuesta "${title}"? Esta acción no se puede deshacer.`)) {
+          setProcessingId(id);
           try {
               await deleteSurvey(id);
-              loadSurveys();
+              await loadSurveys();
           } catch (error: any) {
               if (error.message && error.message.includes('violates row-level security')) {
                   alert("Error de permisos: No puedes eliminar registros. Verifica las políticas RLS en Supabase.");
               } else {
-                  alert("Error al eliminar.");
+                  alert("Error al eliminar. Revisa la consola para más detalles.");
               }
+          } finally {
+            setProcessingId(null);
           }
       }
   };
 
   const handleActivateSurvey = async (id: string) => {
+      if (!id) return;
+      setProcessingId(id);
       try {
           await setSurveyActive(id);
-          loadSurveys();
+          await loadSurveys();
       } catch (error: any) {
         if (error.message && error.message.includes('violates row-level security')) {
             alert("Error de permisos: Verifica las políticas RLS (Enable update for all) en Supabase.");
         } else {
             alert("Error al activar encuesta.");
         }
+      } finally {
+        setProcessingId(null);
       }
   };
 
@@ -262,7 +271,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
                             <div className="flex flex-wrap gap-3 w-full md:w-auto">
                                 <button
                                     onClick={() => handleActivateSurvey(survey.id!)}
-                                    disabled={survey.isActive}
+                                    disabled={survey.isActive || processingId === survey.id}
                                     title="Activar encuesta"
                                     className={`
                                         flex-1 md:flex-none px-4 py-2.5 rounded-xl font-medium border transition-all flex items-center justify-center gap-2
@@ -272,7 +281,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
                                         }
                                     `}
                                 >
-                                    <Power className="w-4 h-4" /> {survey.isActive ? 'Publicada' : 'Publicar'}
+                                    {processingId === survey.id && !survey.isActive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
+                                    {survey.isActive ? 'Publicada' : 'Publicar'}
                                 </button>
 
                                 <div className="h-auto w-px bg-neutral-800 hidden md:block mx-1"></div>
@@ -291,10 +301,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
                                 </button>
                                 <button 
                                     onClick={() => handleDeleteSurvey(survey.id!, survey.title)}
-                                    className="px-3 py-2.5 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                                    disabled={processingId === survey.id}
+                                    className="px-3 py-2.5 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50"
                                     title="Eliminar encuesta"
                                 >
-                                    <Trash2 className="w-5 h-5" />
+                                    {processingId === survey.id && !survey.isActive ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                                 </button>
                             </div>
                         </div>
