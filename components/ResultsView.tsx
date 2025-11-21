@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { SurveyData, PollResult, Submission } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Share2, CheckCircle, ArrowLeft, Loader2, PieChart, Download } from 'lucide-react';
+import { Share2, CheckCircle, ArrowLeft, Loader2, PieChart, Download, Trophy } from 'lucide-react';
 import { fetchResults } from '../services/supabaseClient';
 import html2canvas from 'html2canvas';
 
@@ -59,6 +59,38 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
     return { questionId: q.id, votes };
   });
 
+  // Calculate Overall Winner (Total Votes across all questions)
+  const totalVotesMap: Record<string, number> = {};
+  data.brands.forEach(b => totalVotesMap[b.id] = 0);
+
+  results.forEach(r => {
+      Object.entries(r.votes).forEach(([brandId, count]) => {
+          if (totalVotesMap[brandId] !== undefined) {
+              totalVotesMap[brandId] += count;
+          }
+      });
+  });
+
+  let maxTotalVotes = 0;
+  let overallWinners: string[] = [];
+  
+  if (submissions.length > 0) {
+      Object.entries(totalVotesMap).forEach(([id, count]) => {
+          if (count > maxTotalVotes) {
+              maxTotalVotes = count;
+              overallWinners = [id];
+          } else if (count === maxTotalVotes && count > 0) {
+              overallWinners.push(id);
+          }
+      });
+  }
+
+  const overallWinnerBrand = overallWinners.length === 1 
+    ? data.brands.find(b => b.id === overallWinners[0]) 
+    : null;
+
+  const isTie = overallWinners.length > 1;
+
   if (loading) return <div className="flex justify-center py-32"><Loader2 className="animate-spin w-12 h-12 text-neutral-500" /></div>;
 
   return (
@@ -78,6 +110,44 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">Resultados de Preferencia</h2>
             <p className="text-neutral-400 text-lg bg-neutral-900/50 inline-block px-6 py-2 rounded-full border border-white/5">{submissions.length} respuestas registradas</p>
             <p className="text-neutral-600 text-sm mt-2 uppercase tracking-widest">{data.title}</p>
+
+            {/* Overall Winner Section */}
+            <div className="mt-12 flex justify-center">
+                {overallWinnerBrand ? (
+                    <div className="relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                        <div className="relative bg-neutral-900 border border-yellow-500/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
+                            <div className="flex justify-center mb-4">
+                                <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center border border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
+                                    <Trophy className="w-8 h-8 text-yellow-500" />
+                                </div>
+                            </div>
+                            <h3 className="text-yellow-500/80 uppercase tracking-[0.2em] text-xs font-bold mb-2">Ganador Indiscutible</h3>
+                            <div className="text-4xl font-bold text-white mb-3 tracking-tight">{overallWinnerBrand.name}</div>
+                            <div className="inline-flex items-center gap-2 text-neutral-400 text-sm font-medium bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
+                                <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                                {maxTotalVotes} votos totales acumulados
+                            </div>
+                        </div>
+                    </div>
+                ) : isTie ? (
+                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 max-w-md w-full text-center">
+                         <div className="flex justify-center gap-2 mb-4 opacity-50">
+                            <Trophy className="w-8 h-8 text-neutral-400" />
+                            <Trophy className="w-8 h-8 text-neutral-400" />
+                         </div>
+                         <h3 className="text-neutral-500 uppercase tracking-[0.2em] text-xs font-bold mb-2">Resultado Global</h3>
+                         <div className="text-3xl font-bold text-white mb-2">Empate Técnico</div>
+                         <div className="text-neutral-400 text-sm">
+                             {maxTotalVotes > 0 ? `${maxTotalVotes} votos cada uno` : 'Sin votos suficientes'}
+                         </div>
+                    </div>
+                ) : (
+                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 text-center opacity-60">
+                         <p className="text-neutral-500 text-sm">Esperando más respuestas para determinar un ganador.</p>
+                    </div>
+                )}
+            </div>
         </div>
 
         <div className="grid gap-10">
