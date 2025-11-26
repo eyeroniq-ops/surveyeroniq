@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { SurveyData, PollResult, Submission } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Share2, CheckCircle, ArrowLeft, Loader2, PieChart, Download, Trophy } from 'lucide-react';
+import { ArrowLeft, Loader2, PieChart, Download, Trophy, Medal, Crown } from 'lucide-react';
 import { fetchResults } from '../services/supabaseClient';
 import html2canvas from 'html2canvas';
 
@@ -32,6 +33,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
         const canvas = await html2canvas(resultsRef.current, {
           backgroundColor: '#000000',
           scale: 2, // Better quality
+          useCORS: true, // Important for images
+          allowTaint: true,
         });
         const link = document.createElement('a');
         link.download = `eyeroniq-resultados-${data.title.replace(/\s+/g, '-').toLowerCase()}.png`;
@@ -39,7 +42,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
         link.click();
       } catch (err) {
         console.error("Export failed", err);
-        alert("No se pudo exportar la imagen.");
+        alert("No se pudo exportar la imagen. Verifica que las imágenes tengan permisos CORS.");
       }
     }
   };
@@ -59,7 +62,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
     return { questionId: q.id, votes };
   });
 
-  // Calculate Overall Winner (Total Votes across all questions)
+  // Calculate Rankings
   const totalVotesMap: Record<string, number> = {};
   data.brands.forEach(b => totalVotesMap[b.id] = 0);
 
@@ -71,30 +74,20 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
       });
   });
 
-  let maxTotalVotes = 0;
-  let overallWinners: string[] = [];
-  
-  if (submissions.length > 0) {
-      Object.entries(totalVotesMap).forEach(([id, count]) => {
-          if (count > maxTotalVotes) {
-              maxTotalVotes = count;
-              overallWinners = [id];
-          } else if (count === maxTotalVotes && count > 0) {
-              overallWinners.push(id);
-          }
-      });
-  }
+  // Get image from the LAST question for context
+  const lastQuestion = data.questions[data.questions.length - 1];
 
-  const overallWinnerBrand = overallWinners.length === 1 
-    ? data.brands.find(b => b.id === overallWinners[0]) 
-    : null;
-
-  const isTie = overallWinners.length > 1;
+  const rankedBrands = data.brands.map(brand => ({
+    ...brand,
+    totalVotes: totalVotesMap[brand.id] || 0,
+    // Get the asset for this brand from the last question
+    finalImage: lastQuestion?.assets[brand.id] || null
+  })).sort((a, b) => b.totalVotes - a.totalVotes);
 
   if (loading) return <div className="flex justify-center py-32"><Loader2 className="animate-spin w-12 h-12 text-neutral-500" /></div>;
 
   return (
-    <div className="max-w-4xl mx-auto pb-20 px-4">
+    <div className="max-w-6xl mx-auto pb-20 px-4">
       <button onClick={onBack} className="mb-8 flex items-center gap-2 text-neutral-400 hover:text-white transition-colors group">
         <div className="p-2 rounded-full bg-neutral-900 group-hover:bg-neutral-800 transition-colors">
             <ArrowLeft className="w-4 h-4" /> 
@@ -102,7 +95,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
         <span className="font-medium">Volver al Dashboard</span>
       </button>
 
-      <div ref={resultsRef} className="p-8 bg-black">
+      <div ref={resultsRef} className="p-8 bg-black min-h-screen">
         <div className="text-center mb-16 animate-fadeIn">
             <div className="w-20 h-20 bg-neutral-800 text-neutral-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-neutral-700 shadow-[0_0_30px_-10px_rgba(255,255,255,0.1)]">
             <PieChart className="w-10 h-10" />
@@ -111,46 +104,89 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ data, onBack }) => {
             <p className="text-neutral-400 text-lg bg-neutral-900/50 inline-block px-6 py-2 rounded-full border border-white/5">{submissions.length} respuestas registradas</p>
             <p className="text-neutral-600 text-sm mt-2 uppercase tracking-widest">{data.title}</p>
 
-            {/* Overall Winner Section */}
-            <div className="mt-12 flex justify-center">
-                {overallWinnerBrand ? (
-                    <div className="relative group">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                        <div className="relative bg-neutral-900 border border-yellow-500/30 rounded-2xl p-8 max-w-md w-full text-center shadow-2xl">
-                            <div className="flex justify-center mb-4">
-                                <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center border border-yellow-500/20 shadow-[0_0_20px_rgba(234,179,8,0.2)]">
-                                    <Trophy className="w-8 h-8 text-yellow-500" />
+            {/* PODIUM SECTION */}
+            <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 items-end justify-center max-w-4xl mx-auto">
+                
+                {/* 2nd Place (Left) */}
+                {rankedBrands[1] && (
+                    <div className="order-2 md:order-1 flex flex-col items-center">
+                        <div className="w-full bg-neutral-900/80 border border-neutral-700 rounded-2xl overflow-hidden shadow-lg relative group hover:-translate-y-2 transition-transform duration-300">
+                             <div className="h-48 overflow-hidden bg-neutral-800 relative">
+                                {rankedBrands[1].finalImage ? (
+                                    <img src={rankedBrands[1].finalImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-neutral-600">Sin Imagen</div>
+                                )}
+                                <div className="absolute top-2 left-2 bg-neutral-400 text-black font-bold px-3 py-1 rounded-full text-xs shadow-md flex items-center gap-1">
+                                    <Medal className="w-3 h-3" /> 2do Lugar
                                 </div>
-                            </div>
-                            <h3 className="text-yellow-500/80 uppercase tracking-[0.2em] text-xs font-bold mb-2">Ganador Indiscutible</h3>
-                            <div className="text-4xl font-bold text-white mb-3 tracking-tight">{overallWinnerBrand.name}</div>
-                            <div className="inline-flex items-center gap-2 text-neutral-400 text-sm font-medium bg-white/5 px-4 py-1.5 rounded-full border border-white/5">
-                                <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
-                                {maxTotalVotes} votos totales acumulados
-                            </div>
+                             </div>
+                             <div className="p-4 text-center border-t border-neutral-700">
+                                <h3 className="font-bold text-neutral-300 text-lg">{rankedBrands[1].name}</h3>
+                                <div className="text-neutral-500 font-medium text-sm mt-1">{rankedBrands[1].totalVotes} votos</div>
+                             </div>
                         </div>
+                        <div className="h-16 w-full bg-neutral-800/30 mt-2 rounded-t-lg mx-4"></div>
                     </div>
-                ) : isTie ? (
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 max-w-md w-full text-center">
-                         <div className="flex justify-center gap-2 mb-4 opacity-50">
-                            <Trophy className="w-8 h-8 text-neutral-400" />
-                            <Trophy className="w-8 h-8 text-neutral-400" />
-                         </div>
-                         <h3 className="text-neutral-500 uppercase tracking-[0.2em] text-xs font-bold mb-2">Resultado Global</h3>
-                         <div className="text-3xl font-bold text-white mb-2">Empate Técnico</div>
-                         <div className="text-neutral-400 text-sm">
-                             {maxTotalVotes > 0 ? `${maxTotalVotes} votos cada uno` : 'Sin votos suficientes'}
-                         </div>
+                )}
+
+                {/* 1st Place (Center) */}
+                {rankedBrands[0] && (
+                    <div className="order-1 md:order-2 flex flex-col items-center z-10 -mt-8 md:-mt-0">
+                         <div className="w-full bg-neutral-900 border border-yellow-500/50 rounded-2xl overflow-hidden shadow-[0_0_40px_-10px_rgba(234,179,8,0.2)] relative group hover:-translate-y-3 transition-transform duration-300">
+                             <div className="absolute -inset-0.5 bg-gradient-to-b from-yellow-400 to-yellow-600 opacity-20 blur-sm"></div>
+                             <div className="relative h-64 overflow-hidden bg-neutral-800">
+                                {rankedBrands[0].finalImage ? (
+                                    <img src={rankedBrands[0].finalImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-neutral-600">Sin Imagen</div>
+                                )}
+                                <div className="absolute top-0 right-0 bg-yellow-500 text-black font-extrabold px-4 py-2 rounded-bl-2xl shadow-lg flex items-center gap-2">
+                                    <Crown className="w-4 h-4" /> GANADOR
+                                </div>
+                             </div>
+                             <div className="relative p-6 text-center border-t border-yellow-500/20 bg-neutral-900">
+                                <h3 className="font-bold text-white text-2xl tracking-tight">{rankedBrands[0].name}</h3>
+                                <div className="text-yellow-500 font-bold text-lg mt-2 flex items-center justify-center gap-2">
+                                    <Trophy className="w-4 h-4" />
+                                    {rankedBrands[0].totalVotes} votos
+                                </div>
+                             </div>
+                        </div>
+                        <div className="h-24 w-full bg-neutral-800/50 mt-2 rounded-t-lg mx-2 border-t border-white/5"></div>
                     </div>
-                ) : (
-                    <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 text-center opacity-60">
-                         <p className="text-neutral-500 text-sm">Esperando más respuestas para determinar un ganador.</p>
+                )}
+
+                {/* 3rd Place (Right) */}
+                {rankedBrands[2] && (
+                    <div className="order-3 flex flex-col items-center">
+                        <div className="w-full bg-neutral-900/80 border border-orange-900/50 rounded-2xl overflow-hidden shadow-lg relative group hover:-translate-y-2 transition-transform duration-300">
+                             <div className="h-40 overflow-hidden bg-neutral-800 relative">
+                                {rankedBrands[2].finalImage ? (
+                                    <img src={rankedBrands[2].finalImage} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-neutral-600">Sin Imagen</div>
+                                )}
+                                <div className="absolute top-2 left-2 bg-orange-700 text-orange-100 font-bold px-3 py-1 rounded-full text-xs shadow-md flex items-center gap-1">
+                                    <Medal className="w-3 h-3" /> 3er Lugar
+                                </div>
+                             </div>
+                             <div className="p-4 text-center border-t border-neutral-800">
+                                <h3 className="font-bold text-neutral-400 text-lg">{rankedBrands[2].name}</h3>
+                                <div className="text-neutral-600 font-medium text-sm mt-1">{rankedBrands[2].totalVotes} votos</div>
+                             </div>
+                        </div>
+                        <div className="h-10 w-full bg-neutral-800/30 mt-2 rounded-t-lg mx-6"></div>
                     </div>
                 )}
             </div>
+            
+            <p className="mt-8 text-neutral-500 text-sm">
+                * Imágenes de referencia tomadas de la pregunta final: "{lastQuestion?.text}"
+            </p>
         </div>
 
-        <div className="grid gap-10">
+        <div className="grid gap-10 max-w-4xl mx-auto">
             {data.questions.map((q) => {
             const result = results.find(r => r.questionId === q.id);
             if (!result) return null;
